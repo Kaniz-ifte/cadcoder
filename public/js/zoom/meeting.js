@@ -1,0 +1,126 @@
+(function() {
+    var testTool = window.testTool;
+    // get meeting args from url
+    var tmpArgs = testTool.parseQuery();
+    var meetingConfig = {
+        apiKey: tmpArgs.apiKey,
+        meetingNumber: tmpArgs.mn,
+        userName: (function() {
+            if (tmpArgs.name) {
+                try {
+                    return testTool.b64DecodeUnicode(tmpArgs.name);
+                } catch (e) {
+                    return tmpArgs.name;
+                }
+            }
+            return (
+                "CDN#" +
+                tmpArgs.version +
+                "#" +
+                testTool.detectOS() +
+                "#" +
+                testTool.getBrowserInfo()
+            );
+        })(),
+        passWord: tmpArgs.pwd,
+        leaveUrl: "/live-class",
+        role: parseInt(tmpArgs.role, 10),
+        userEmail: (function() {
+            try {
+                return testTool.b64DecodeUnicode(tmpArgs.email);
+            } catch (e) {
+                return tmpArgs.email;
+            }
+        })(),
+        lang: tmpArgs.lang,
+        signature: tmpArgs.signature || "",
+        china: tmpArgs.china === "1",
+    };
+
+    // a tool use debug mobile device
+    if (testTool.isMobileDevice()) {
+        vConsole = new VConsole();
+    }
+    console.log(JSON.stringify(ZoomMtg.checkSystemRequirements()));
+
+    // it's option if you want to change the WebSDK dependency link resources. setZoomJSLib must be run at first
+    // ZoomMtg.setZoomJSLib("https://source.zoom.us/1.7.10/lib", "/av"); // CDN version defaul
+    if (meetingConfig.china)
+        ZoomMtg.setZoomJSLib("https://jssdk.zoomus.cn/1.7.10/lib", "/av"); // china cdn option
+    ZoomMtg.preLoadWasm();
+    ZoomMtg.prepareJssdk();
+
+    function beginJoin(signature) {
+        ZoomMtg.init({
+
+            debug: true, //optional
+            showMeetingHeader: false, //option
+            disableInvite: true, //optional
+            disableCallOut: false, //optional
+            disableRecord: false, //optional
+            disableJoinAudio: false, //optional
+            audioPanelAlwaysOpen: true, //optional
+            showPureSharingContent: false, //optional
+            isSupportAV: true, //optional,
+            isSupportChat: true, //optional,
+            isSupportQA: true, //optional,
+            isSupportCC: true, //optional,
+            screenShare: true, //optional,
+            rwcBackup: '', //optional,
+            videoDrag: true, //optional,
+            sharingMode: 'both', //optional,
+            videoHeader: true, //optional,
+            isLockBottom: true, // optional,
+            isSupportNonverbal: true, // optional,
+            isShowJoiningErrorDialog: true, // optional,
+            inviteUrlFormat: '', // optional
+            loginWindow: { // optional,
+                width: 400,
+                height: 380
+            },
+            meetingInfo: [ // optional
+                
+            ],
+            disableVoIP: false, // optional
+            disableReport: false, // optional
+
+
+            leaveUrl: meetingConfig.leaveUrl,
+            webEndpoint: meetingConfig.webEndpoint,
+
+
+            success: function() {
+                console.log(meetingConfig);
+                console.log("signature", signature);
+                $.i18n.reload(meetingConfig.lang);
+                ZoomMtg.join({
+
+                    meetingNumber: meetingConfig.meetingNumber,
+                    userName: meetingConfig.userName,
+                    signature: signature,
+                    apiKey: meetingConfig.apiKey,
+                    userEmail: meetingConfig.userEmail,
+                    passWord: meetingConfig.passWord,
+                    success: function(res) {
+                        console.log("join meeting success");
+                        console.log("get attendeelist");
+                        ZoomMtg.getAttendeeslist({});
+                        ZoomMtg.getCurrentUser({
+                            success: function(res) {
+                                console.log("success getCurrentUser", res.result.currentUser);
+                            },
+                        });
+                    },
+                    error: function(res) {
+                        console.log(res);
+                    },
+                });
+            },
+            error: function(res) {
+                console.log(res);
+            },
+        });
+    }
+
+    beginJoin(meetingConfig.signature);
+})();
